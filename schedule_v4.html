@@ -2255,6 +2255,72 @@
     renderAll();
   }
 
+  // ── 月間カレンダー D&D ────────────────────────────────
+  function initCalDnd() {
+    document.querySelectorAll('.cal-chip[data-future-id]').forEach(chip => {
+      chip.addEventListener('dragstart', onCalChipDragStart);
+      chip.addEventListener('dragend',   onCalChipDragEnd);
+    });
+    document.querySelectorAll('#month-grid .cal-cell').forEach(cell => {
+      const dateStr = cell.dataset.date;
+      if (dateStr && dateStr > todayStr()) {
+        cell.addEventListener('dragover',  onCalCellDragOver);
+        cell.addEventListener('dragleave', onCalCellDragLeave);
+        cell.addEventListener('drop',      onCalCellDrop);
+      }
+    });
+  }
+
+  function onCalChipDragStart(e) {
+    const chip = e.currentTarget;
+    calDndFutureId  = parseInt(chip.dataset.futureId, 10);
+    calChipDragging = true;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(calDndFutureId));
+    chip.classList.add('dnd-dragging');
+    e.stopPropagation();
+  }
+
+  function onCalChipDragEnd(e) {
+    e.currentTarget.classList.remove('dnd-dragging');
+    document.querySelectorAll('.cal-cell.dnd-cal-over').forEach(el => el.classList.remove('dnd-cal-over'));
+    calDndFutureId = null;
+    // calChipDragging は mouseup/click の後にリセット
+    setTimeout(() => { calChipDragging = false; }, 0);
+  }
+
+  function onCalCellDragOver(e) {
+    if (calDndFutureId == null) return;
+    const dateStr = e.currentTarget.dataset.date;
+    const f = data.future.find(x => x.id === calDndFutureId);
+    if (f && f.date === dateStr) return;   // 同日付はハイライトしない
+    e.preventDefault();                     // ← drop を許可するために必須
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('dnd-cal-over');
+  }
+
+  function onCalCellDragLeave(e) {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      e.currentTarget.classList.remove('dnd-cal-over');
+    }
+  }
+
+  function onCalCellDrop(e) {
+    if (calDndFutureId == null) return;
+    e.preventDefault();
+    e.stopPropagation();   // drop 後の click 連鎖発火（ポップオーバー誤展開）を防ぐ
+    const cell = e.currentTarget;
+    cell.classList.remove('dnd-cal-over');
+    const dateStr = cell.dataset.date;
+    if (!dateStr || dateStr <= todayStr()) return;
+    const f = data.future.find(x => x.id === calDndFutureId);
+    if (!f || f.date === dateStr) { calDndFutureId = null; return; }
+    f.date = dateStr;
+    calDndFutureId = null;
+    saveData();
+    renderAll();
+  }
+
   // ── ビュー切替 / 月間カレンダー ────────────────────
   let activeView = 'today';
   let currentMonth = (() => {
@@ -2347,8 +2413,14 @@
     const priHtml  = ev.priority ? `<span class="cal-chip-pri pri-${ev.priority}"></span>` : '';
     chip.innerHTML = `${priHtml}${timeHtml}${esc(ev.title)}`;
     chip.title = `${CAT_LABEL[ev.category]||''}　${ev.title}`;
+    // future イベントはドラッグ可能
+    if (ev._source === 'future') {
+      chip.setAttribute('draggable', 'true');
+      chip.dataset.futureId = ev.id;
+    }
     chip.onclick = (e) => {
       e.stopPropagation();
+      if (calChipDragging) return;   // drag 操作後の誤 click 防止
       if (ev._source === 'future') {
         setActiveView('today');
         showFutureEdit(ev.id);
@@ -2568,6 +2640,7 @@
     days.forEach(d => {
       const cell = document.createElement('div');
       cell.className = 'cal-cell';
+      cell.dataset.date = d.dateStr;
       if (!d.inMonth) cell.classList.add('other-month');
       if (d.isToday)  cell.classList.add('today');
       if (d.dow === 0) cell.classList.add('sun');
@@ -2627,6 +2700,7 @@
     });
     const cnt = document.getElementById('month-count');
     if (cnt) cnt.textContent = `${monthEventCount}件`;
+    initCalDnd();
   }
 
   // ── 初期化 ────────────────────────────────────────────
