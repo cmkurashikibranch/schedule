@@ -2146,6 +2146,9 @@
         card.addEventListener('dragstart', onDailyDragStart);
         card.addEventListener('dragend',   onDailyDragEnd);
       });
+      container.removeEventListener('dragover',  onDailyDragOver);
+      container.removeEventListener('dragleave', onDailyDragLeave);
+      container.removeEventListener('drop',      onDailyDrop);
       container.addEventListener('dragover',  onDailyDragOver);
       container.addEventListener('dragleave', onDailyDragLeave);
       container.addEventListener('drop',      onDailyDrop);
