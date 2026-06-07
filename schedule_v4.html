@@ -1849,6 +1849,7 @@
 
     renderFuture();
     updateStats();
+    initDailyDnd();
 
     if (typeof activeView !== 'undefined' && activeView === 'month') {
       renderMonthCalendar();
@@ -2133,6 +2134,122 @@
     document.getElementById('stat-visits').textContent   = visits;
     document.getElementById('stat-meetings').textContent = mtgs;
     document.getElementById('today-count').textContent   = `${total}件`;
+  }
+
+  // ── 日次タスク D&D ────────────────────────────────────
+  function initDailyDnd() {
+    ['morning','afternoon','anytime'].forEach(slot => {
+      const container = document.getElementById(`${slot}-tasks`);
+      if (!container) return;
+      container.querySelectorAll('.task-card[data-task-id]').forEach(card => {
+        card.setAttribute('draggable', 'true');
+        card.addEventListener('dragstart', onDailyDragStart);
+        card.addEventListener('dragend',   onDailyDragEnd);
+      });
+      container.addEventListener('dragover',  onDailyDragOver);
+      container.addEventListener('dragleave', onDailyDragLeave);
+      container.addEventListener('drop',      onDailyDrop);
+    });
+  }
+
+  function clearDailyDndLines() {
+    document.querySelectorAll('.dnd-insert-line').forEach(el => el.remove());
+    document.querySelectorAll('.time-col-body.dnd-over').forEach(el => el.classList.remove('dnd-over'));
+  }
+
+  function getSlotFromContainer(container) {
+    for (const slot of ['morning','afternoon','anytime']) {
+      if (document.getElementById(`${slot}-tasks`) === container) return slot;
+    }
+    return null;
+  }
+
+  function onDailyDragStart(e) {
+    const card = e.currentTarget;
+    const id = parseInt(card.dataset.taskId, 10);
+    const t = data.today.find(x => x.id === id);
+    if (!t) return;
+    dndState = { taskId: id, sourceSlot: t.slot };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(id));
+    // カスタムゴースト（半透明クローン）
+    const ghost = card.cloneNode(true);
+    ghost.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${card.offsetWidth}px;opacity:0.7;pointer-events:none;border-radius:8px;`;
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, e.offsetX, e.offsetY);
+    setTimeout(() => ghost.remove(), 0);
+    card.classList.add('dnd-dragging');
+  }
+
+  function onDailyDragEnd(e) {
+    if (!dndState) return;  // drop 後に renderAll でリセット済みなら何もしない
+    e.currentTarget.classList.remove('dnd-dragging');
+    clearDailyDndLines();
+    dndState = null;
+  }
+
+  function onDailyDragOver(e) {
+    if (!dndState) return;
+    e.preventDefault();                         // ← drop を許可するために必須
+    e.dataTransfer.dropEffect = 'move';
+    const container = e.currentTarget;
+    container.classList.add('dnd-over');
+    container.querySelectorAll('.dnd-insert-line').forEach(el => el.remove());
+    const cards = [...container.querySelectorAll('.task-card[data-task-id]:not(.dnd-dragging)')];
+    let insertBefore = null;
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) { insertBefore = card; break; }
+    }
+    const line = document.createElement('div');
+    line.className = 'dnd-insert-line';
+    if (insertBefore) container.insertBefore(line, insertBefore);
+    else              container.appendChild(line);
+  }
+
+  function onDailyDragLeave(e) {
+    const container = e.currentTarget;
+    // e.relatedTarget が container の子要素の場合は発火しない（チャッタリング防止）
+    if (!container.contains(e.relatedTarget)) {
+      container.classList.remove('dnd-over');
+      container.querySelectorAll('.dnd-insert-line').forEach(el => el.remove());
+    }
+  }
+
+  function onDailyDrop(e) {
+    if (!dndState) return;
+    e.preventDefault();
+    const prevDndState = dndState;
+    dndState = null;   // renderAll ガードを解除する前にリセット
+    const container = e.currentTarget;
+    container.classList.remove('dnd-over');
+    const targetSlot = getSlotFromContainer(container);
+    if (!targetSlot) { clearDailyDndLines(); return; }
+    const cards = [...container.querySelectorAll('.task-card[data-task-id]:not(.dnd-dragging)')];
+    let insertBeforeId = null;
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) { insertBeforeId = parseInt(card.dataset.taskId, 10); break; }
+    }
+    const t = data.today.find(x => x.id === prevDndState.taskId);
+    if (!t) { clearDailyDndLines(); return; }
+    t.slot = targetSlot;
+    const slotTasks = sortTasks(data.today.filter(x => x.slot === targetSlot && x.id !== t.id));
+    const newOrder = [];
+    let inserted = false;
+    for (const st of slotTasks) {
+      if (!inserted && st.id === insertBeforeId) { newOrder.push(t); inserted = true; }
+      newOrder.push(st);
+    }
+    if (!inserted) newOrder.push(t);
+    newOrder.forEach((task, idx) => { task.order = idx; });
+    if (prevDndState.sourceSlot !== targetSlot) {
+      sortTasks(data.today.filter(x => x.slot === prevDndState.sourceSlot))
+        .forEach((task, idx) => { task.order = idx; });
+    }
+    clearDailyDndLines();
+    saveData();
+    renderAll();
   }
 
   // ── ビュー切替 / 月間カレンダー ────────────────────
