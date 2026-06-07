@@ -2382,6 +2382,7 @@
       if (targetDay > daysInNextMonth) { skipped++; return; }  // 第5週など存在しない日はスキップ
       const targetDate = `${nextY}-${String(nextM+1).padStart(2,'0')}-${String(targetDay).padStart(2,'0')}`;
       if (targetDate <= todayStr()) { skipped++; return; }
+      if (data.future.some(x => x.date === targetDate && x.title === f.title && x.slot === f.slot)) { skipped++; return; }
       data.future.push({
         id: nextId++,
         title:    f.title,
