@@ -1179,8 +1179,9 @@
       <section class="section">
         <div class="month-toolbar">
           <button type="button" class="month-nav-btn" onclick="changeMonth(-1)" aria-label="前の月">‹</button>
-          <button type="button" class="month-nav-btn" onclick="changeMonth(1)" aria-label="次の月">›</button>
           <div class="month-title" id="month-title">—</div>
+          <button type="button" class="month-copy-btn" onclick="copyVisitsToNextMonth()">来月にコピー</button>
+          <button type="button" class="month-nav-btn" onclick="changeMonth(1)" aria-label="次の月">›</button>
           <button type="button" class="month-today-btn" onclick="goCurrentMonth()">今月</button>
           <button type="button" class="month-recurring-btn" id="recurring-panel-btn" onclick="toggleRecurringPanel()">定期予定</button>
           <button type="button" class="month-print-btn" onclick="window.print()">印刷</button>
@@ -2354,6 +2355,49 @@
   function changeMonth(delta) {
     currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1);
     renderMonthCalendar();
+  }
+
+  function copyVisitsToNextMonth() {
+    const y = currentMonth.getFullYear();
+    const m = currentMonth.getMonth();
+    const monthStr = `${y}-${String(m+1).padStart(2,'0')}`;
+    const visits = data.future.filter(f => f.category === 'visit' && f.date.startsWith(monthStr));
+    if (visits.length === 0) {
+      alert(`${m+1}月には訪問の予定がありません。`);
+      return;
+    }
+    // 年跨ぎを Date で安全に処理（12月→1月など）
+    const nextDate = new Date(y, m + 1, 1);
+    const nextY = nextDate.getFullYear();
+    const nextM = nextDate.getMonth();  // 0-indexed
+    if (!confirm(`${m+1}月の訪問 ${visits.length}件を${nextM+1}月にコピーします。よいですか？`)) return;
+    const daysInNextMonth = new Date(nextY, nextM + 1, 0).getDate();
+    let copied = 0;
+    let skipped = 0;
+    visits.forEach(f => {
+      const d = new Date(f.date + 'T00:00:00');
+      const n   = Math.ceil(d.getDate() / 7);  // 第 n 週
+      const dow = d.getDay();                   // 曜日（0=日〜6=土）
+      const targetDay = nthWeekday(nextY, nextM, n, dow);
+      if (targetDay > daysInNextMonth) { skipped++; return; }  // 第5週など存在しない日はスキップ
+      const targetDate = `${nextY}-${String(nextM+1).padStart(2,'0')}-${String(targetDay).padStart(2,'0')}`;
+      if (targetDate <= todayStr()) { skipped++; return; }
+      data.future.push({
+        id: nextId++,
+        title:    f.title,
+        date:     targetDate,
+        slot:     f.slot,
+        category: f.category,
+        priority: f.priority,
+        time:     f.time,
+      });
+      copied++;
+    });
+    saveData();
+    renderAll();
+    let msg = `${nextM+1}月に ${copied}件コピーしました。`;
+    if (skipped > 0) msg += `\n（${skipped}件は対象曜日なし・過去日のためスキップ）`;
+    alert(msg);
   }
 
   function goCurrentMonth() {
