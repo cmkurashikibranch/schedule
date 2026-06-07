@@ -143,6 +143,33 @@
 
     .task-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.30); transform: translateY(-1px); }
     .task-card.done { opacity: 0.42; }
+
+    /* ── Drag & Drop ──────────────────────────────────── */
+    .task-card[draggable="true"] { cursor: grab; }
+    .task-card[draggable="true"]:active { cursor: grabbing; }
+    .task-card.dnd-dragging {
+      opacity: 0.35;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    .dnd-insert-line {
+      height: 2px;
+      background: var(--accent);
+      border-radius: 1px;
+      margin: 2px 0;
+      pointer-events: none;   /* dragleave チャッタリング防止 */
+      flex-shrink: 0;
+    }
+    .time-col-body.dnd-over {
+      background: rgba(129,140,248,0.07);
+      border-radius: 8px;
+    }
+    .cal-chip[draggable="true"] { cursor: grab; }
+    .cal-chip.dnd-dragging { opacity: 0.35; }
+    .cal-cell.dnd-cal-over {
+      background: rgba(129,140,248,0.12) !important;
+      outline: 1px dashed var(--accent);
+    }
     .task-card.done .task-title { text-decoration: line-through; color: var(--text-3); }
 
     .task-top { display: flex; align-items: flex-start; gap: 9px; }
@@ -540,8 +567,20 @@
       padding: 3px 4px; font-family: 'JetBrains Mono', monospace;
       font-size: 11px; color: var(--text); background: transparent;
       outline: none; width: 140px;
+      color-scheme: dark;
     }
     .add-date-input:focus { border-bottom-color: var(--accent); }
+    .add-date-input::-webkit-calendar-picker-indicator {
+      opacity: 1;
+      cursor: pointer;
+      filter: brightness(0) invert(1);
+      padding: 4px 5px;
+      border-radius: 5px;
+      background-color: rgba(129, 140, 248, 0.25);
+    }
+    .add-date-input::-webkit-calendar-picker-indicator:hover {
+      background-color: rgba(129, 140, 248, 0.5);
+    }
     .slot-badge {
       font-size: 10px; color: var(--text-3);
       font-family: 'JetBrains Mono', monospace;
@@ -928,6 +967,21 @@
     }
     .month-print-btn:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
 
+    .month-copy-btn {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(129,140,248,0.4);
+      background: rgba(129,140,248,0.12);
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter','Noto Sans JP',sans-serif;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .month-copy-btn:hover { background: rgba(129,140,248,0.22); border-color: var(--accent); }
+
     /* ── 印刷スタイル ─────────────────────────────────── */
     @media print {
       @page { size: A4 landscape; margin: 1.5cm; }
@@ -950,6 +1004,7 @@
       .month-nav-btn,
       .month-today-btn,
       .month-recurring-btn,
+      .month-copy-btn,
       .month-print-btn,
       .section-line,
       .section-count,
@@ -1124,8 +1179,9 @@
       <section class="section">
         <div class="month-toolbar">
           <button type="button" class="month-nav-btn" onclick="changeMonth(-1)" aria-label="前の月">‹</button>
-          <button type="button" class="month-nav-btn" onclick="changeMonth(1)" aria-label="次の月">›</button>
           <div class="month-title" id="month-title">—</div>
+          <button type="button" class="month-copy-btn" onclick="copyVisitsToNextMonth()">来月にコピー</button>
+          <button type="button" class="month-nav-btn" onclick="changeMonth(1)" aria-label="次の月">›</button>
           <button type="button" class="month-today-btn" onclick="goCurrentMonth()">今月</button>
           <button type="button" class="month-recurring-btn" id="recurring-panel-btn" onclick="toggleRecurringPanel()">定期予定</button>
           <button type="button" class="month-print-btn" onclick="window.print()">印刷</button>
@@ -1179,6 +1235,10 @@
   let editingFutureId = null;
   let editFutureForm  = { category:'admin', priority:'mid', slot:'anytime' };
 
+  let dndState        = null;   // { taskId, sourceSlot }
+  let calDndFutureId  = null;
+  let calChipDragging = false;  // calChip onclick 競合防止フラグ
+
   function sortByPriority(items) {
     return [...items].sort((a, b) => {
       const pa = PRI_ORDER[a.priority] ?? 1;
@@ -1203,7 +1263,13 @@
 
   // 時間順 → 優先度 → id の総合ソート。時間なしは下に。
   function sortTasks(items) {
+    const hasManualOrder = items.some(t => t.order != null);
     return [...items].sort((a, b) => {
+      if (hasManualOrder) {
+        const oa = a.order ?? Infinity;
+        const ob = b.order ?? Infinity;
+        if (oa !== ob) return oa - ob;
+      }
       const ta = parseTimeToMinutes(a.time);
       const tb = parseTimeToMinutes(b.time);
       if (ta != null && tb == null) return -1;
@@ -1516,7 +1582,14 @@
     const note = slot === 'anytime'
       ? (form.querySelector('.add-memo-input')?.value.trim() || null)
       : null;
-    data.today.push({ id: nextId++, title, category: addForm.category, priority: addForm.priority, time, slot, done: false, note });
+    const newTask = { id: nextId++, title, category: addForm.category, priority: addForm.priority, time, slot, done: false, note };
+    // 当スロットに手動順序がある場合は末尾の order を引き継ぐ
+    const slotItems = data.today.filter(t => t.slot === slot);
+    if (slotItems.some(t => t.order != null)) {
+      const maxOrder = Math.max(...slotItems.map(t => t.order ?? 0));
+      newTask.order = maxOrder + 1;
+    }
+    data.today.push(newTask);
     addingSlot = null;
     saveData(); renderAll();
   }
@@ -1608,6 +1681,7 @@
   function taskCard(t) {
     const el = document.createElement('div');
     el.className = `task-card cat-${t.category}${t.done?' done':''}`;
+    el.dataset.taskId = t.id;
     const timeHtml = t.time
       ? `<span class="task-time" onclick="editTime(${t.id},this)">${esc(t.time)}</span>`
       : `<span class="task-time-add" onclick="editTime(${t.id},this)">＋時間</span>`;
@@ -1727,6 +1801,7 @@
 
   // ── 全体再描画 ────────────────────────────────────────
   function renderAll() {
+    if (dndState) return;   // D&D 操作中は DOM を再構築しない
     // 今日のタスク
     ['morning','afternoon','anytime'].forEach(slot => {
       const body   = document.getElementById(`${slot}-tasks`);
@@ -1775,6 +1850,7 @@
 
     renderFuture();
     updateStats();
+    initDailyDnd();
 
     if (typeof activeView !== 'undefined' && activeView === 'month') {
       renderMonthCalendar();
@@ -2061,6 +2137,191 @@
     document.getElementById('today-count').textContent   = `${total}件`;
   }
 
+  // ── 日次タスク D&D ────────────────────────────────────
+  function initDailyDnd() {
+    ['morning','afternoon','anytime'].forEach(slot => {
+      const container = document.getElementById(`${slot}-tasks`);
+      if (!container) return;
+      container.querySelectorAll('.task-card[data-task-id]').forEach(card => {
+        card.setAttribute('draggable', 'true');
+        card.addEventListener('dragstart', onDailyDragStart);
+        card.addEventListener('dragend',   onDailyDragEnd);
+      });
+      container.removeEventListener('dragover',  onDailyDragOver);
+      container.removeEventListener('dragleave', onDailyDragLeave);
+      container.removeEventListener('drop',      onDailyDrop);
+      container.addEventListener('dragover',  onDailyDragOver);
+      container.addEventListener('dragleave', onDailyDragLeave);
+      container.addEventListener('drop',      onDailyDrop);
+    });
+  }
+
+  function clearDailyDndLines() {
+    document.querySelectorAll('.dnd-insert-line').forEach(el => el.remove());
+    document.querySelectorAll('.time-col-body.dnd-over').forEach(el => el.classList.remove('dnd-over'));
+  }
+
+  function getSlotFromContainer(container) {
+    for (const slot of ['morning','afternoon','anytime']) {
+      if (document.getElementById(`${slot}-tasks`) === container) return slot;
+    }
+    return null;
+  }
+
+  function onDailyDragStart(e) {
+    const card = e.currentTarget;
+    const id = parseInt(card.dataset.taskId, 10);
+    const t = data.today.find(x => x.id === id);
+    if (!t) return;
+    dndState = { taskId: id, sourceSlot: t.slot };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(id));
+    // カスタムゴースト（半透明クローン）
+    const ghost = card.cloneNode(true);
+    ghost.style.cssText = `position:fixed;top:-9999px;left:-9999px;width:${card.offsetWidth}px;opacity:0.7;pointer-events:none;border-radius:8px;`;
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, e.offsetX, e.offsetY);
+    setTimeout(() => ghost.remove(), 0);
+    card.classList.add('dnd-dragging');
+  }
+
+  function onDailyDragEnd(e) {
+    if (!dndState) return;  // drop 後に renderAll でリセット済みなら何もしない
+    e.currentTarget.classList.remove('dnd-dragging');
+    clearDailyDndLines();
+    dndState = null;
+  }
+
+  function onDailyDragOver(e) {
+    if (!dndState) return;
+    e.preventDefault();                         // ← drop を許可するために必須
+    e.dataTransfer.dropEffect = 'move';
+    const container = e.currentTarget;
+    container.classList.add('dnd-over');
+    container.querySelectorAll('.dnd-insert-line').forEach(el => el.remove());
+    const cards = [...container.querySelectorAll('.task-card[data-task-id]:not(.dnd-dragging)')];
+    let insertBefore = null;
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) { insertBefore = card; break; }
+    }
+    const line = document.createElement('div');
+    line.className = 'dnd-insert-line';
+    if (insertBefore) container.insertBefore(line, insertBefore);
+    else              container.appendChild(line);
+  }
+
+  function onDailyDragLeave(e) {
+    const container = e.currentTarget;
+    // e.relatedTarget が container の子要素の場合は発火しない（チャッタリング防止）
+    if (!container.contains(e.relatedTarget)) {
+      container.classList.remove('dnd-over');
+      container.querySelectorAll('.dnd-insert-line').forEach(el => el.remove());
+    }
+  }
+
+  function onDailyDrop(e) {
+    if (!dndState) return;
+    e.preventDefault();
+    const prevDndState = dndState;
+    dndState = null;   // renderAll ガードを解除する前にリセット
+    const container = e.currentTarget;
+    container.classList.remove('dnd-over');
+    const targetSlot = getSlotFromContainer(container);
+    if (!targetSlot) { clearDailyDndLines(); return; }
+    const cards = [...container.querySelectorAll('.task-card[data-task-id]:not(.dnd-dragging)')];
+    let insertBeforeId = null;
+    for (const card of cards) {
+      const rect = card.getBoundingClientRect();
+      if (e.clientY < rect.top + rect.height / 2) { insertBeforeId = parseInt(card.dataset.taskId, 10); break; }
+    }
+    const t = data.today.find(x => x.id === prevDndState.taskId);
+    if (!t) { clearDailyDndLines(); return; }
+    t.slot = targetSlot;
+    const slotTasks = sortTasks(data.today.filter(x => x.slot === targetSlot && x.id !== t.id));
+    const newOrder = [];
+    let inserted = false;
+    for (const st of slotTasks) {
+      if (!inserted && st.id === insertBeforeId) { newOrder.push(t); inserted = true; }
+      newOrder.push(st);
+    }
+    if (!inserted) newOrder.push(t);
+    newOrder.forEach((task, idx) => { task.order = idx; });
+    if (prevDndState.sourceSlot !== targetSlot) {
+      sortTasks(data.today.filter(x => x.slot === prevDndState.sourceSlot))
+        .forEach((task, idx) => { task.order = idx; });
+    }
+    clearDailyDndLines();
+    saveData();
+    renderAll();
+  }
+
+  // ── 月間カレンダー D&D ────────────────────────────────
+  function initCalDnd() {
+    document.querySelectorAll('.cal-chip[data-future-id]').forEach(chip => {
+      chip.addEventListener('dragstart', onCalChipDragStart);
+      chip.addEventListener('dragend',   onCalChipDragEnd);
+    });
+    document.querySelectorAll('#month-grid .cal-cell').forEach(cell => {
+      const dateStr = cell.dataset.date;
+      if (dateStr && dateStr > todayStr()) {
+        cell.addEventListener('dragover',  onCalCellDragOver);
+        cell.addEventListener('dragleave', onCalCellDragLeave);
+        cell.addEventListener('drop',      onCalCellDrop);
+      }
+    });
+  }
+
+  function onCalChipDragStart(e) {
+    const chip = e.currentTarget;
+    calDndFutureId  = parseInt(chip.dataset.futureId, 10);
+    calChipDragging = true;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', String(calDndFutureId));
+    chip.classList.add('dnd-dragging');
+    e.stopPropagation();
+  }
+
+  function onCalChipDragEnd(e) {
+    e.currentTarget.classList.remove('dnd-dragging');
+    document.querySelectorAll('.cal-cell.dnd-cal-over').forEach(el => el.classList.remove('dnd-cal-over'));
+    calDndFutureId = null;
+    // calChipDragging は mouseup/click の後にリセット
+    setTimeout(() => { calChipDragging = false; }, 0);
+  }
+
+  function onCalCellDragOver(e) {
+    if (calDndFutureId == null) return;
+    const dateStr = e.currentTarget.dataset.date;
+    const f = data.future.find(x => x.id === calDndFutureId);
+    if (f && f.date === dateStr) return;   // 同日付はハイライトしない
+    e.preventDefault();                     // ← drop を許可するために必須
+    e.dataTransfer.dropEffect = 'move';
+    e.currentTarget.classList.add('dnd-cal-over');
+  }
+
+  function onCalCellDragLeave(e) {
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      e.currentTarget.classList.remove('dnd-cal-over');
+    }
+  }
+
+  function onCalCellDrop(e) {
+    if (calDndFutureId == null) return;
+    e.preventDefault();
+    e.stopPropagation();   // drop 後の click 連鎖発火（ポップオーバー誤展開）を防ぐ
+    const cell = e.currentTarget;
+    cell.classList.remove('dnd-cal-over');
+    const dateStr = cell.dataset.date;
+    if (!dateStr || dateStr <= todayStr()) return;
+    const f = data.future.find(x => x.id === calDndFutureId);
+    if (!f || f.date === dateStr) { calDndFutureId = null; return; }
+    f.date = dateStr;
+    calDndFutureId = null;
+    saveData();
+    renderAll();
+  }
+
   // ── ビュー切替 / 月間カレンダー ────────────────────
   let activeView = 'today';
   let currentMonth = (() => {
@@ -2094,6 +2355,50 @@
   function changeMonth(delta) {
     currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + delta, 1);
     renderMonthCalendar();
+  }
+
+  function copyVisitsToNextMonth() {
+    const y = currentMonth.getFullYear();
+    const m = currentMonth.getMonth();
+    const monthStr = `${y}-${String(m+1).padStart(2,'0')}`;
+    const visits = data.future.filter(f => f.category === 'visit' && f.date.startsWith(monthStr));
+    if (visits.length === 0) {
+      alert(`${m+1}月には訪問の予定がありません。`);
+      return;
+    }
+    // 年跨ぎを Date で安全に処理（12月→1月など）
+    const nextDate = new Date(y, m + 1, 1);
+    const nextY = nextDate.getFullYear();
+    const nextM = nextDate.getMonth();  // 0-indexed
+    if (!confirm(`${m+1}月の訪問 ${visits.length}件を${nextM+1}月にコピーします。よいですか？`)) return;
+    const daysInNextMonth = new Date(nextY, nextM + 1, 0).getDate();
+    let copied = 0;
+    let skipped = 0;
+    visits.forEach(f => {
+      const d = new Date(f.date + 'T00:00:00');
+      const n   = Math.ceil(d.getDate() / 7);  // 第 n 週
+      const dow = d.getDay();                   // 曜日（0=日〜6=土）
+      const targetDay = nthWeekday(nextY, nextM, n, dow);
+      if (targetDay > daysInNextMonth) { skipped++; return; }  // 第5週など存在しない日はスキップ
+      const targetDate = `${nextY}-${String(nextM+1).padStart(2,'0')}-${String(targetDay).padStart(2,'0')}`;
+      if (targetDate <= todayStr()) { skipped++; return; }
+      if (data.future.some(x => x.date === targetDate && x.title === f.title && x.slot === f.slot)) { skipped++; return; }
+      data.future.push({
+        id: nextId++,
+        title:    f.title,
+        date:     targetDate,
+        slot:     f.slot,
+        category: f.category,
+        priority: f.priority,
+        time:     f.time,
+      });
+      copied++;
+    });
+    saveData();
+    renderAll();
+    let msg = `${nextM+1}月に ${copied}件コピーしました。`;
+    if (skipped > 0) msg += `\n（${skipped}件は対象曜日なし・過去日のためスキップ）`;
+    alert(msg);
   }
 
   function goCurrentMonth() {
@@ -2153,8 +2458,14 @@
     const priHtml  = ev.priority ? `<span class="cal-chip-pri pri-${ev.priority}"></span>` : '';
     chip.innerHTML = `${priHtml}${timeHtml}${esc(ev.title)}`;
     chip.title = `${CAT_LABEL[ev.category]||''}　${ev.title}`;
+    // future イベントはドラッグ可能
+    if (ev._source === 'future') {
+      chip.setAttribute('draggable', 'true');
+      chip.dataset.futureId = ev.id;
+    }
     chip.onclick = (e) => {
       e.stopPropagation();
+      if (calChipDragging) return;   // drag 操作後の誤 click 防止
       if (ev._source === 'future') {
         setActiveView('today');
         showFutureEdit(ev.id);
@@ -2374,6 +2685,7 @@
     days.forEach(d => {
       const cell = document.createElement('div');
       cell.className = 'cal-cell';
+      cell.dataset.date = d.dateStr;
       if (!d.inMonth) cell.classList.add('other-month');
       if (d.isToday)  cell.classList.add('today');
       if (d.dow === 0) cell.classList.add('sun');
@@ -2433,6 +2745,7 @@
     });
     const cnt = document.getElementById('month-count');
     if (cnt) cnt.textContent = `${monthEventCount}件`;
+    initCalDnd();
   }
 
   // ── 初期化 ────────────────────────────────────────────
