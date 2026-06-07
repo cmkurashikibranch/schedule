@@ -143,6 +143,33 @@
 
     .task-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.30); transform: translateY(-1px); }
     .task-card.done { opacity: 0.42; }
+
+    /* ── Drag & Drop ──────────────────────────────────── */
+    .task-card[draggable="true"] { cursor: grab; }
+    .task-card[draggable="true"]:active { cursor: grabbing; }
+    .task-card.dnd-dragging {
+      opacity: 0.35;
+      transform: none !important;
+      box-shadow: none !important;
+    }
+    .dnd-insert-line {
+      height: 2px;
+      background: var(--accent);
+      border-radius: 1px;
+      margin: 2px 0;
+      pointer-events: none;   /* dragleave チャッタリング防止 */
+      flex-shrink: 0;
+    }
+    .time-col-body.dnd-over {
+      background: rgba(129,140,248,0.07);
+      border-radius: 8px;
+    }
+    .cal-chip[draggable="true"] { cursor: grab; }
+    .cal-chip.dnd-dragging { opacity: 0.35; }
+    .cal-cell.dnd-cal-over {
+      background: rgba(129,140,248,0.12) !important;
+      outline: 1px dashed var(--accent);
+    }
     .task-card.done .task-title { text-decoration: line-through; color: var(--text-3); }
 
     .task-top { display: flex; align-items: flex-start; gap: 9px; }
@@ -542,6 +569,18 @@
       outline: none; width: 140px;
     }
     .add-date-input:focus { border-bottom-color: var(--accent); }
+    .add-date-input { color-scheme: dark; }
+    .add-date-input::-webkit-calendar-picker-indicator {
+      opacity: 1;
+      cursor: pointer;
+      filter: brightness(0) invert(1);
+      padding: 4px 5px;
+      border-radius: 5px;
+      background-color: rgba(129, 140, 248, 0.25);
+    }
+    .add-date-input::-webkit-calendar-picker-indicator:hover {
+      background-color: rgba(129, 140, 248, 0.5);
+    }
     .slot-badge {
       font-size: 10px; color: var(--text-3);
       font-family: 'JetBrains Mono', monospace;
@@ -928,6 +967,21 @@
     }
     .month-print-btn:hover { background: var(--accent-bg); color: var(--accent); border-color: var(--accent); }
 
+    .month-copy-btn {
+      height: 32px;
+      padding: 0 12px;
+      border-radius: 6px;
+      border: 1px solid rgba(129,140,248,0.4);
+      background: rgba(129,140,248,0.12);
+      color: var(--accent);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 600;
+      font-family: 'Inter','Noto Sans JP',sans-serif;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .month-copy-btn:hover { background: rgba(129,140,248,0.22); border-color: var(--accent); }
+
     /* ── 印刷スタイル ─────────────────────────────────── */
     @media print {
       @page { size: A4 landscape; margin: 1.5cm; }
@@ -1179,6 +1233,10 @@
   let editingFutureId = null;
   let editFutureForm  = { category:'admin', priority:'mid', slot:'anytime' };
 
+  let dndState        = null;   // { taskId, sourceSlot }
+  let calDndFutureId  = null;
+  let calChipDragging = false;  // calChip onclick 競合防止フラグ
+
   function sortByPriority(items) {
     return [...items].sort((a, b) => {
       const pa = PRI_ORDER[a.priority] ?? 1;
@@ -1203,7 +1261,13 @@
 
   // 時間順 → 優先度 → id の総合ソート。時間なしは下に。
   function sortTasks(items) {
+    const hasManualOrder = items.some(t => t.order != null);
     return [...items].sort((a, b) => {
+      if (hasManualOrder) {
+        const oa = a.order ?? Infinity;
+        const ob = b.order ?? Infinity;
+        if (oa !== ob) return oa - ob;
+      }
       const ta = parseTimeToMinutes(a.time);
       const tb = parseTimeToMinutes(b.time);
       if (ta != null && tb == null) return -1;
@@ -1516,7 +1580,14 @@
     const note = slot === 'anytime'
       ? (form.querySelector('.add-memo-input')?.value.trim() || null)
       : null;
-    data.today.push({ id: nextId++, title, category: addForm.category, priority: addForm.priority, time, slot, done: false, note });
+    const newTask = { id: nextId++, title, category: addForm.category, priority: addForm.priority, time, slot, done: false, note };
+    // 当スロットに手動順序がある場合は末尾の order を引き継ぐ
+    const slotItems = data.today.filter(t => t.slot === slot);
+    if (slotItems.some(t => t.order != null)) {
+      const maxOrder = Math.max(...slotItems.map(t => t.order ?? 0));
+      newTask.order = maxOrder + 1;
+    }
+    data.today.push(newTask);
     addingSlot = null;
     saveData(); renderAll();
   }
@@ -1608,6 +1679,7 @@
   function taskCard(t) {
     const el = document.createElement('div');
     el.className = `task-card cat-${t.category}${t.done?' done':''}`;
+    el.dataset.taskId = t.id;
     const timeHtml = t.time
       ? `<span class="task-time" onclick="editTime(${t.id},this)">${esc(t.time)}</span>`
       : `<span class="task-time-add" onclick="editTime(${t.id},this)">＋時間</span>`;
@@ -1727,6 +1799,7 @@
 
   // ── 全体再描画 ────────────────────────────────────────
   function renderAll() {
+    if (dndState) return;   // D&D 操作中は DOM を再構築しない
     // 今日のタスク
     ['morning','afternoon','anytime'].forEach(slot => {
       const body   = document.getElementById(`${slot}-tasks`);
