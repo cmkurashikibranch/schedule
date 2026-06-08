@@ -1529,44 +1529,77 @@
     }
   }
 
-  function loadData() {
-    const raw   = localStorage.getItem(STORAGE_KEY);
-    const today = todayStr();
-    if (!raw) { data = { today:[], ongoing:[], overdue:[], future:[], holidays:{}, recurring:{ yamanakajuku:{type:'nth-weekday',n:3,dow:5}, bushokai_shacho:{}, bushokai_dentatsu:{}, bushokai_kyotaku:{}, tomita:{}, keiei_1:{}, keiei_2:{}, keiei:{} } }; return; }
-    const saved = JSON.parse(raw);
-    nextId = saved.nextId || 300;
-    data.future = saved.future || [];
-    data.holidays = saved.holidays || {};
-    data.recurring = saved.recurring || {};
-    if (!data.recurring.yamanakajuku) data.recurring.yamanakajuku = { type: 'nth-weekday', n: 3, dow: 5 };
-    if (!data.recurring.bushokai_shacho)   data.recurring.bushokai_shacho   = {};
-    if (!data.recurring.bushokai_dentatsu) data.recurring.bushokai_dentatsu = {};
-    if (!data.recurring.bushokai_kyotaku)  data.recurring.bushokai_kyotaku  = {};
-    if (!data.recurring.tomita)   data.recurring.tomita   = {};
-    if (!data.recurring.keiei_1) {
-      data.recurring.keiei_1 = data.recurring.keiei || {};
+  function defaultData() {
+      return {
+        today:[], ongoing:[], overdue:[], future:[], holidays:{},
+        recurring:{
+          yamanakajuku:{type:'nth-weekday',n:3,dow:5},
+          bushokai_shacho:{}, bushokai_dentatsu:{}, bushokai_kyotaku:{},
+          tomita:{}, keiei_1:{}, keiei_2:{}, keiei:{},
+        },
+      };
     }
-    if (!data.recurring.keiei_2) data.recurring.keiei_2 = {};
-    if (!data.recurring.keiei)   data.recurring.keiei   = {};
-    if (saved.saveDate === today) {
-      data.today   = [...(saved.morning||[]), ...(saved.afternoon||[]), ...(saved.anytime||[])];
-      data.ongoing = saved.ongoing || [];
-      data.overdue = saved.overdue || [];
-    } else {
-      // 日付が変わった：morning/afternoon/anytime のうち未完了タスクをすべて翌日に繰り越す
-      const prev = [
-        ...(saved.morning   || []),
-        ...(saved.afternoon || []),
-        ...(saved.anytime   || []),
-      ];
-      data.today = prev
-        .filter(t => t && t.done !== true)
-        .map(t => ({ ...t, done: false }));
-      data.ongoing = saved.ongoing || [];
-      data.overdue = saved.overdue || [];
+
+    async function loadData() {
+      const today = todayStr();
+      let saved = null;
+      try {
+        saved = await StorageAdapter.load(currentUser.uid);
+      } catch (err) {
+        if (err.code === 'permission-denied') {
+          // This account is not on the allowlist — sign out and show clear message
+          await fbSignOutGlobal();
+          const errEl = document.getElementById('login-error');
+          if (errEl) errEl.textContent = 'このアカウントはアクセスできません。登録されたアカウントでログインしてください。';
+          return;
+        }
+        console.error('Firestore load failed:', err);
+        showOfflineBanner();
+        data = defaultData();
+        return;
+      }
+
+      if (!saved) {
+        data = defaultData();
+        await checkLocalStorageMigration();
+        return;
+      }
+
+      // Migrate legacy sequential nextId (< 1,000,000) to timestamp-based
+      nextId = (!saved.nextId || saved.nextId < 1_000_000) ? Date.now() : saved.nextId;
+
+      data.future   = saved.future   || [];
+      data.holidays = saved.holidays || {};
+      data.recurring = saved.recurring || {};
+      if (!data.recurring.yamanakajuku) data.recurring.yamanakajuku = { type: 'nth-weekday', n: 3, dow: 5 };
+      if (!data.recurring.bushokai_shacho)   data.recurring.bushokai_shacho   = {};
+      if (!data.recurring.bushokai_dentatsu) data.recurring.bushokai_dentatsu = {};
+      if (!data.recurring.bushokai_kyotaku)  data.recurring.bushokai_kyotaku  = {};
+      if (!data.recurring.tomita)   data.recurring.tomita   = {};
+      if (!data.recurring.keiei_1) {
+        data.recurring.keiei_1 = data.recurring.keiei || {};
+      }
+      if (!data.recurring.keiei_2) data.recurring.keiei_2 = {};
+      if (!data.recurring.keiei)   data.recurring.keiei   = {};
+
+      if (saved.saveDate === today) {
+        data.today   = [...(saved.morning||[]), ...(saved.afternoon||[]), ...(saved.anytime||[])];
+        data.ongoing = saved.ongoing || [];
+        data.overdue = saved.overdue || [];
+      } else {
+        const prev = [
+          ...(saved.morning   || []),
+          ...(saved.afternoon || []),
+          ...(saved.anytime   || []),
+        ];
+        data.today = prev
+          .filter(t => t && t.done !== true)
+          .map(t => ({ ...t, done: false }));
+        data.ongoing = saved.ongoing || [];
+        data.overdue = saved.overdue || [];
+      }
+      promoteFuture();
     }
-    promoteFuture();
-  }
 
   // ── 定期予定 ──────────────────────────────────────────
   function nthWeekday(year, month, n, dow) {
