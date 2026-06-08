@@ -3004,6 +3004,82 @@
 
   // init() is called from onAuthStateChanged inside the Firebase IIFE (second <script> below).
   // The bare init() call has been removed to prevent a crash before the IIFE loads.
+
+    // ── localStorage → Firestore migration ───────────────────
+    async function checkLocalStorageMigration() {
+      try {
+        if (localStorage.getItem('care-schedule-v1-migrated') === '1') return;
+        const raw = localStorage.getItem('care-schedule-v1');
+        if (!raw) return;
+        JSON.parse(raw); // validate JSON — throws if corrupt
+      } catch {
+        return;
+      }
+
+      const card = document.createElement('div');
+      card.style.cssText = [
+        'position:fixed;bottom:max(24px,env(safe-area-inset-bottom,0px) + 16px);',
+        'left:50%;transform:translateX(-50%);',
+        'background:var(--surface);border:1.5px solid var(--accent);',
+        'border-radius:12px;padding:20px;z-index:8000;',
+        'box-shadow:0 4px 20px rgba(0,0,0,0.4);',
+        'width:min(360px,calc(100vw - 32px));',
+      ].join('');
+      card.innerHTML = `
+        <p style="font-size:13px;color:var(--text);margin-bottom:4px;font-weight:600;">データの移行</p>
+        <p style="font-size:12px;color:var(--text-2);margin-bottom:16px;line-height:1.5;">
+          このデバイスに保存されているデータをクラウドに移行しますか？<br>
+          ※移行後もローカルデータは保持されます
+        </p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="_mig_skip" type="button"
+            style="padding:7px 14px;border-radius:6px;border:1px solid var(--border);
+                   background:none;color:var(--text-2);cursor:pointer;font-size:12px;">
+            今はしない
+          </button>
+          <button id="_mig_ok" type="button"
+            style="padding:7px 14px;border-radius:6px;border:none;
+                   background:var(--accent);color:#fff;cursor:pointer;
+                   font-size:12px;font-weight:600;">
+            クラウドに移行する
+          </button>
+        </div>
+        <p id="_mig_status" style="font-size:11px;color:var(--text-2);margin-top:10px;min-height:14px;"></p>
+      `;
+      document.body.appendChild(card);
+
+      document.getElementById('_mig_skip').onclick = () => card.remove();
+
+      document.getElementById('_mig_ok').onclick = async () => {
+        const okBtn    = document.getElementById('_mig_ok');
+        const skipBtn  = document.getElementById('_mig_skip');
+        const status   = document.getElementById('_mig_status');
+        okBtn.disabled = true; skipBtn.disabled = true;
+        status.textContent = '移行中…';
+        try {
+          const raw = localStorage.getItem('care-schedule-v1');
+          const localData = JSON.parse(raw);
+          // Migrate nextId to timestamp-based if old sequential
+          if (!localData.nextId || localData.nextId < 1_000_000) {
+            localData.nextId = Date.now();
+          }
+          localData.lastWriteTime = Date.now();
+          // Save to Firestore FIRST — only remove localStorage after success
+          await StorageAdapter.save(currentUser.uid, localData);
+          localStorage.setItem('care-schedule-v1-migrated', '1');
+          status.textContent = '移行が完了しました';
+          setTimeout(async () => {
+            card.remove();
+            await init();
+            renderAll();
+          }, 1200);
+        } catch (err) {
+          status.textContent = '移行に失敗しました。再度お試しください。';
+          status.style.color = 'var(--pri-high)';
+          okBtn.disabled = false; skipBtn.disabled = false;
+        }
+      };
+    }
   </script>
     </div><!-- /#app-screen -->
 
