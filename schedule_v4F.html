@@ -1397,8 +1397,6 @@
   const CAT_LABEL = { visit:'訪問', meeting:'担当者会議', admin:'事務', monitoring:'モニタリング', training:'研修', dept:'社内行事' };
   const PRI_LABEL = { high:'高', mid:'中', low:'低' };
   const DAYS  = ['日','月','火','水','木','金','土'];
-  const STORAGE_KEY = 'care-schedule-v1';
-
   const RECURRING_EVENTS = [
     { key: 'yamanakajuku', label: 'やまなか塾V3', category: 'training', auto: true },
     { key: 'bushokai_shacho',   label: '部署会（社長）',    category: 'dept', auto: false },
@@ -1480,14 +1478,27 @@
     },
   };
 
-  // ── LocalStorage ──────────────────────────────────────
+  // ── Storage (Firestore) ───────────────────────────────
+  // NOTE: var (not let) so that window.currentUser from the IIFE refers
+  // to the same binding — top-level let does NOT create window.* properties
+  var currentUser = null;
+  var _saveTimer  = null;
+  var _appInitialized = false;
+
+  // No-op stubs — real implementations are set by the Firebase IIFE below.
+  // These prevent crashes if saveData() fires before the IIFE has loaded.
+  window.showSaveIndicator = function() {};
+  window.showOfflineBanner = function() {};
+  window.fbSignOutGlobal   = function() { return Promise.resolve(); };
+
   function todayStr() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
-  function saveData() {
-    const saved = {
+  function buildSavePayload() {
+    return {
+      lastWriteTime: Date.now(),
       saveDate:  todayStr(),
       morning:   data.today.filter(t => t.slot === 'morning'),
       afternoon: data.today.filter(t => t.slot === 'afternoon'),
@@ -1499,7 +1510,23 @@
       recurring: data.recurring || {},
       nextId,
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
+  }
+
+  function saveData() {
+    showSaveIndicator('pending');
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => _flushSave(), 300);
+  }
+
+  async function _flushSave() {
+    if (!currentUser) return;
+    try {
+      await StorageAdapter.save(currentUser.uid, buildSavePayload());
+      showSaveIndicator('ok');
+    } catch (err) {
+      console.error('Firestore save failed:', err);
+      showSaveIndicator('error');
+    }
   }
 
   function loadData() {
