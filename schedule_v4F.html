@@ -1071,9 +1071,180 @@
     }
     .add-memo-input:focus { border-bottom-color: var(--accent); }
     .add-memo-input::placeholder { color: var(--text-3); }
+
+    /* ── Auth Loading Screen ───────────────────────────────── */
+    #auth-loading-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+    }
+    .auth-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(129,140,248,0.25);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Login Screen ───────────────────────────────────────── */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 9998;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+    }
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px 32px;
+      text-align: center;
+      width: min(340px, calc(100vw - 32px));
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .login-logo { margin-bottom: 16px; }
+    .login-title {
+      font-size: 22px; font-weight: 700; color: var(--text);
+      margin-bottom: 8px; letter-spacing: -0.02em;
+    }
+    .login-sub { font-size: 13px; color: var(--text-2); margin-bottom: 32px; line-height: 1.5; }
+    .login-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 12px 20px; border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2); color: var(--text);
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .login-btn:hover { background: var(--accent-bg); border-color: var(--accent); }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .google-icon { width: 18px; height: 18px; flex-shrink: 0; }
+    .login-error {
+      margin-top: 16px; font-size: 12px; color: var(--pri-high);
+      min-height: 16px; line-height: 1.5;
+    }
+
+    /* ── User Menu (header right) ───────────────────────────── */
+    .user-menu { position: relative; }
+    .user-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 5px 10px 5px 6px;
+      color: var(--text-2); cursor: pointer;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      font-size: 12px; transition: background 0.12s;
+    }
+    .user-btn:hover { background: var(--surface-2); }
+    .user-avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      object-fit: cover; background: var(--surface-2);
+    }
+    .user-avatar-fallback {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent-bg); color: var(--accent);
+      font-size: 10px; font-weight: 700;
+      display: none; align-items: center; justify-content: center;
+    }
+    .user-dropdown {
+      position: absolute; right: 0; top: calc(100% + 6px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      min-width: 140px; max-width: calc(100vw - 32px); z-index: 200;
+    }
+    .user-dropdown-name {
+      padding: 8px 12px 6px;
+      font-size: 11px; color: var(--text-3);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .user-dropdown button {
+      display: block; width: 100%; text-align: left;
+      padding: 8px 12px; background: none; border: none;
+      color: var(--text); font-size: 13px; cursor: pointer;
+      border-radius: 5px;
+    }
+    .user-dropdown button:hover { background: var(--surface-2); color: var(--pri-high); }
+
+    /* ── Save Indicator ─────────────────────────────────────── */
+    .save-indicator {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; padding: 3px 8px; border-radius: 5px;
+      transition: opacity 0.3s;
+    }
+    .save-indicator.pending { color: var(--text-2); }
+    .save-indicator.ok      { color: #4ade80; }
+    .save-indicator.error   {
+      color: var(--pri-high);
+      background: rgba(248,113,113,0.18);
+      border: 1px solid rgba(248,113,113,0.35);
+    }
+    .save-indicator.hidden  { opacity: 0; pointer-events: none; }
+
+    /* ── Offline Banner ─────────────────────────────────────── */
+    .offline-banner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9997;
+      background: rgba(129,140,248,0.20);
+      border-bottom: 1px solid rgba(129,140,248,0.40);
+      color: var(--text); font-size: 12px;
+      padding: 8px 48px 8px 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .offline-banner-close {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: var(--text-2);
+      cursor: pointer; font-size: 18px; line-height: 1;
+    }
+
+    /* ── Mobile adjustments ─────────────────────────────────── */
+    @media (max-width: 600px) {
+      #user-name { display: none; }
+      .login-card { padding: 32px 24px; }
+    }
+
+    /* ── Print: hide login/loading overlays ─────────────────── */
+    @media print {
+      #auth-loading-screen, #login-screen { display: none !important; }
+    }
   </style>
 </head>
 <body>
+
+    <!-- ── Auth Loading Screen (shown while Firebase SDK loads) ── -->
+    <div id="auth-loading-screen">
+      <div class="auth-spinner"></div>
+    </div>
+
+    <!-- ── Login Screen ──────────────────────────────────────── -->
+    <div id="login-screen" style="display:none;">
+      <div class="login-card">
+        <div class="login-logo">
+          <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
+            <rect width="48" height="48" rx="12" fill="rgba(129,140,248,0.15)"/>
+            <text x="24" y="31" text-anchor="middle"
+                  font-family="Inter,sans-serif" font-size="18" font-weight="700"
+                  fill="#818CF8">SC</text>
+          </svg>
+        </div>
+        <h1 class="login-title">スケジュール管理</h1>
+        <p class="login-sub">職場のGoogleアカウントでログインしてください</p>
+        <button class="login-btn" id="login-btn" type="button" onclick="login()">
+          <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Googleでログイン
+        </button>
+        <p class="login-error" id="login-error" role="alert" aria-live="polite"></p>
+      </div>
+    </div>
+
+    <!-- ── App Screen (existing UI wrapped) ──────────────────── -->
+    <div id="app-screen" style="display:none;">
 
   <header class="header">
     <div class="header-left">
@@ -2759,5 +2930,7 @@
 
   init();
   </script>
+    </div><!-- /#app-screen -->
+
 </body>
 </html>
