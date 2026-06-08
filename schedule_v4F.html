@@ -1269,6 +1269,20 @@
         <div class="stat-label">完了</div>
       </div>
     </div>
+    <span class="save-indicator hidden" id="save-indicator"></span>
+    <div class="user-menu" id="user-menu" style="display:none;">
+      <button class="user-btn" id="user-btn" type="button" onclick="toggleUserMenu()">
+        <img class="user-avatar" id="user-avatar" src="" alt=""
+             onerror="this.style.display='none';document.getElementById('user-avatar-fallback').style.display='flex';">
+        <span class="user-avatar-fallback" id="user-avatar-fallback"></span>
+        <span id="user-name"></span>
+        <span style="font-size:9px;margin-left:2px;">▾</span>
+      </button>
+      <div class="user-dropdown" id="user-dropdown" style="display:none;">
+        <div class="user-dropdown-name" id="user-email"></div>
+        <button type="button" onclick="logout()">ログアウト</button>
+      </div>
+    </div>
   </header>
 
   <main class="main">
