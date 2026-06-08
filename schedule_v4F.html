@@ -3083,5 +3083,239 @@
   </script>
     </div><!-- /#app-screen -->
 
+<!-- ── Firebase SDK + Auth + Firestore ────────────────────── -->
+<script>
+// Catch failed dynamic imports (network error / CDN blocked)
+window.addEventListener('unhandledrejection', function(event) {
+  var msg = (event.reason && event.reason.message) ? event.reason.message : String(event.reason);
+  if (msg.indexOf('gstatic.com') !== -1 || msg.indexOf('Failed to fetch') !== -1) {
+    var spinner = document.getElementById('auth-loading-screen');
+    if (spinner) spinner.innerHTML =
+      '<div style="color:var(--text-2);text-align:center;padding:20px;font-size:13px;">' +
+      'ネットワークに接続できません。<br>接続を確認して再読み込みしてください。<br><br>' +
+      '<button onclick="location.reload()" style="padding:8px 16px;border-radius:8px;' +
+      'background:var(--accent);border:none;color:#fff;cursor:pointer;">再読み込み</button></div>';
+    event.preventDefault();
+  }
+});
+
+(async function firebaseInit() {
+  var V    = '10.12.2';
+  var BASE = 'https://www.gstatic.com/firebasejs/' + V;
+
+  var appMod   = await import(BASE + '/firebase-app.js');
+  var authMod  = await import(BASE + '/firebase-auth.js');
+  var storeMod = await import(BASE + '/firebase-firestore.js');
+
+  var initializeApp           = appMod.initializeApp;
+  var getAuth                 = authMod.getAuth;
+  var setPersistence          = authMod.setPersistence;
+  var browserLocalPersistence = authMod.browserLocalPersistence;
+  var signInWithPopup         = authMod.signInWithPopup;
+  var signInWithRedirect      = authMod.signInWithRedirect;
+  var getRedirectResult        = authMod.getRedirectResult;
+  var GoogleAuthProvider      = authMod.GoogleAuthProvider;
+  var onAuthStateChanged      = authMod.onAuthStateChanged;
+  var signOut                 = authMod.signOut;
+  var initializeFirestore     = storeMod.initializeFirestore;
+  var persistentLocalCache    = storeMod.persistentLocalCache;
+  var persistentMultipleTabManager = storeMod.persistentMultipleTabManager;
+  var doc                     = storeMod.doc;
+  var getDoc                  = storeMod.getDoc;
+  var setDoc                  = storeMod.setDoc;
+
+  // ── Firebase config (replace with real values from Firebase Console) ──
+  var firebaseConfig = {
+    apiKey:            "PASTE_YOUR_API_KEY_HERE",
+    authDomain:        "PASTE_YOUR_AUTH_DOMAIN_HERE",
+    projectId:         "PASTE_YOUR_PROJECT_ID_HERE",
+    storageBucket:     "PASTE_YOUR_STORAGE_BUCKET_HERE",
+    messagingSenderId: "PASTE_YOUR_SENDER_ID_HERE",
+    appId:             "PASTE_YOUR_APP_ID_HERE"
+  };
+
+  var app  = initializeApp(firebaseConfig);
+  var auth = getAuth(app);
+  var db   = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+  var googleProvider = new GoogleAuthProvider();
+
+  // Persist login across browser sessions (survive tab close / restart)
+  await setPersistence(auth, browserLocalPersistence);
+
+  // ── Storage Adapter ──────────────────────────────────────
+  window.StorageAdapter = {
+    save: async function(uid, payload) {
+      await setDoc(doc(db, 'users', uid, 'schedule', 'data'), payload);
+    },
+    load: async function(uid) {
+      var snap = await getDoc(doc(db, 'users', uid, 'schedule', 'data'));
+      return snap.exists() ? snap.data() : null;
+    }
+  };
+
+  // ── Expose sign-out for loadData() error handling ────────
+  window.fbSignOutGlobal = async function() { await signOut(auth); };
+
+  // ── UI helpers ────────────────────────────────────────────
+  function getAuthErrorMessage(err) {
+    var map = {
+      'auth/network-request-failed':
+        'ネットワークに接続できませんでした。Wi-Fiまたはモバイルデータをご確認ください。',
+      'auth/popup-blocked':
+        'ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。',
+      'auth/popup-closed-by-user':
+        'ログインがキャンセルされました。もう一度お試しください。',
+      'auth/cancelled-popup-request':
+        'ログインがキャンセルされました。もう一度お試しください。',
+      'auth/unauthorized-domain':
+        'このURLからのログインは許可されていません。管理者にお問い合わせください。',
+      'auth/user-disabled':
+        'このアカウントは無効になっています。管理者にお問い合わせください。',
+    };
+    return map[err.code] || 'ログインに失敗しました。しばらく待ってからもう一度お試しください。';
+  }
+
+  window.showSaveIndicator = function(state) {
+    var el = document.getElementById('save-indicator');
+    if (!el) return;
+    el.className = 'save-indicator ' + state;
+    if (state === 'pending') { el.textContent = '保存中…'; }
+    if (state === 'ok')      { el.textContent = '保存済み'; setTimeout(function(){ el.classList.add('hidden'); }, 2000); }
+    if (state === 'error')   { el.textContent = '保存失敗'; }
+  };
+
+  window.showOfflineBanner = function() {
+    if (document.getElementById('offline-banner')) return;
+    var banner = document.createElement('div');
+    banner.id = 'offline-banner';
+    banner.className = 'offline-banner';
+    banner.innerHTML =
+      'オフライン中 — 接続が回復すると自動的に更新されます' +
+      '<button class="offline-banner-close" type="button" ' +
+      'onclick="document.getElementById(\'offline-banner\').remove()" ' +
+      'aria-label="閉じる">×</button>';
+    document.body.appendChild(banner);
+    window.addEventListener('online', function() {
+      var b = document.getElementById('offline-banner');
+      if (b) b.remove();
+    }, { once: true });
+  };
+
+  window.showLoginScreen = function() {
+    document.getElementById('auth-loading-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display        = 'flex';
+    document.getElementById('app-screen').style.display          = 'none';
+    document.getElementById('user-menu').style.display           = 'none';
+  };
+
+  window.showAppScreen = function(user) {
+    document.getElementById('auth-loading-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display        = 'none';
+    document.getElementById('app-screen').style.display          = '';
+    var menu = document.getElementById('user-menu');
+    menu.style.display = '';
+    var avatar    = document.getElementById('user-avatar');
+    var fallback  = document.getElementById('user-avatar-fallback');
+    var nameEl    = document.getElementById('user-name');
+    var emailEl   = document.getElementById('user-email');
+    if (user.photoURL) {
+      avatar.src = user.photoURL;
+    } else {
+      avatar.style.display = 'none';
+      fallback.style.display = 'flex';
+      fallback.textContent = (user.displayName || user.email || 'U').charAt(0).toUpperCase();
+    }
+    nameEl.textContent  = user.displayName ? user.displayName.split(' ')[0] : '';
+    emailEl.textContent = user.email || '';
+  };
+
+  window.toggleUserMenu = function() {
+    var dd = document.getElementById('user-dropdown');
+    dd.style.display = dd.style.display === 'none' ? '' : 'none';
+  };
+
+  document.addEventListener('click', function(e) {
+    var menu = document.getElementById('user-menu');
+    var dd   = document.getElementById('user-dropdown');
+    if (dd && menu && !menu.contains(e.target)) dd.style.display = 'none';
+  });
+
+  // ── Login ────────────────────────────────────────────────
+  window.login = async function() {
+    var btn    = document.getElementById('login-btn');
+    var errEl  = document.getElementById('login-error');
+    btn.disabled = true;
+    errEl.textContent = '';
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e) {
+      if (['auth/popup-blocked','auth/popup-closed-by-user',
+           'auth/cancelled-popup-request'].includes(e.code)) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (e2) {
+          errEl.textContent = getAuthErrorMessage(e2);
+        }
+      } else if (e.code !== 'auth/popup-closed-by-user') {
+        errEl.textContent = getAuthErrorMessage(e);
+      }
+      btn.disabled = false;
+    }
+  };
+
+  // ── Logout ───────────────────────────────────────────────
+  window.logout = async function() {
+    if (!confirm('ログアウトしますか？\n保存されていない変更は失われます。')) return;
+    if (_saveTimer) { clearTimeout(_saveTimer); await _flushSave(); }
+    await signOut(auth);
+    try { localStorage.removeItem('care-schedule-v1'); } catch(_) {}
+  };
+
+  // ── Flush on tab/window close ────────────────────────────
+  window.addEventListener('beforeunload', function() {
+    if (_saveTimer) { clearTimeout(_saveTimer); _flushSave(); }
+  });
+
+  // ── Capture redirect sign-in result (for iOS Safari) ─────
+  await getRedirectResult(auth).catch(function(err) {
+    if (err.code && err.code !== 'auth/popup-closed-by-user') {
+      console.error('getRedirectResult:', err.code);
+    }
+  });
+
+  // ── Auth state driver ─────────────────────────────────────
+  onAuthStateChanged(auth, async function(user) {
+    if (user) {
+      currentUser = user;
+      showAppScreen(user);
+      if (!_appInitialized) {
+        _appInitialized = true;
+        await init();
+      }
+    } else {
+      _appInitialized = false;
+      if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+      currentUser = null;
+      showLoginScreen();
+      data = defaultData();
+    }
+  });
+
+})().catch(function(err) {
+  console.error('Firebase initialization failed:', err);
+  var el = document.getElementById('auth-loading-screen');
+  if (el) el.innerHTML =
+    '<div style="color:var(--text-2);text-align:center;padding:20px;font-size:13px;">' +
+    '初期化に失敗しました。<br>ページを再読み込みしてください。<br><br>' +
+    '<button onclick="location.reload()" style="padding:8px 16px;border-radius:8px;' +
+    'background:var(--accent);border:none;color:#fff;cursor:pointer;">再読み込み</button></div>';
+});
+</script>
+
 </body>
 </html>
