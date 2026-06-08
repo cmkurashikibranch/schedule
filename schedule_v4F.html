@@ -2994,15 +2994,16 @@
   }
 
   // ── 初期化 ────────────────────────────────────────────
-  function init() {
+  async function init() {
     const now = new Date();
     document.getElementById('today-date').textContent =
       `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${DAYS[now.getDay()]}）`;
-    loadData();
+    await loadData();
     renderAll();
   }
 
-  init();
+  // init() is called from onAuthStateChanged inside the Firebase IIFE (second <script> below).
+  // The bare init() call has been removed to prevent a crash before the IIFE loads.
   </script>
     </div><!-- /#app-screen -->
 
