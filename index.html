@@ -1071,9 +1071,180 @@
     }
     .add-memo-input:focus { border-bottom-color: var(--accent); }
     .add-memo-input::placeholder { color: var(--text-3); }
+
+    /* ── Auth Loading Screen ───────────────────────────────── */
+    #auth-loading-screen {
+      position: fixed; inset: 0; z-index: 9999;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+    }
+    .auth-spinner {
+      width: 32px; height: 32px;
+      border: 3px solid rgba(129,140,248,0.25);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Login Screen ───────────────────────────────────────── */
+    #login-screen {
+      position: fixed; inset: 0; z-index: 9998;
+      display: flex; align-items: center; justify-content: center;
+      background: var(--bg);
+    }
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 40px 32px;
+      text-align: center;
+      width: min(340px, calc(100vw - 32px));
+      box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    }
+    .login-logo { margin-bottom: 16px; }
+    .login-title {
+      font-size: 22px; font-weight: 700; color: var(--text);
+      margin-bottom: 8px; letter-spacing: -0.02em;
+    }
+    .login-sub { font-size: 13px; color: var(--text-2); margin-bottom: 32px; line-height: 1.5; }
+    .login-btn {
+      display: flex; align-items: center; justify-content: center; gap: 10px;
+      width: 100%; padding: 12px 20px; border-radius: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface-2); color: var(--text);
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      font-size: 14px; font-weight: 500; cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .login-btn:hover { background: var(--accent-bg); border-color: var(--accent); }
+    .login-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .google-icon { width: 18px; height: 18px; flex-shrink: 0; }
+    .login-error {
+      margin-top: 16px; font-size: 12px; color: var(--pri-high);
+      min-height: 16px; line-height: 1.5;
+    }
+
+    /* ── User Menu (header right) ───────────────────────────── */
+    .user-menu { position: relative; }
+    .user-btn {
+      display: flex; align-items: center; gap: 8px;
+      background: none; border: 1px solid var(--border);
+      border-radius: 8px; padding: 5px 10px 5px 6px;
+      color: var(--text-2); cursor: pointer;
+      font-family: 'Inter', 'Noto Sans JP', sans-serif;
+      font-size: 12px; transition: background 0.12s;
+    }
+    .user-btn:hover { background: var(--surface-2); }
+    .user-avatar {
+      width: 22px; height: 22px; border-radius: 50%;
+      object-fit: cover; background: var(--surface-2);
+    }
+    .user-avatar-fallback {
+      width: 22px; height: 22px; border-radius: 50%;
+      background: var(--accent-bg); color: var(--accent);
+      font-size: 10px; font-weight: 700;
+      display: none; align-items: center; justify-content: center;
+    }
+    .user-dropdown {
+      position: absolute; right: 0; top: calc(100% + 6px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 4px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+      min-width: 140px; max-width: calc(100vw - 32px); z-index: 200;
+    }
+    .user-dropdown-name {
+      padding: 8px 12px 6px;
+      font-size: 11px; color: var(--text-3);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 4px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .user-dropdown button {
+      display: block; width: 100%; text-align: left;
+      padding: 8px 12px; background: none; border: none;
+      color: var(--text); font-size: 13px; cursor: pointer;
+      border-radius: 5px;
+    }
+    .user-dropdown button:hover { background: var(--surface-2); color: var(--pri-high); }
+
+    /* ── Save Indicator ─────────────────────────────────────── */
+    .save-indicator {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px; padding: 3px 8px; border-radius: 5px;
+      transition: opacity 0.3s;
+    }
+    .save-indicator.pending { color: var(--text-2); }
+    .save-indicator.ok      { color: #4ade80; }
+    .save-indicator.error   {
+      color: var(--pri-high);
+      background: rgba(248,113,113,0.18);
+      border: 1px solid rgba(248,113,113,0.35);
+    }
+    .save-indicator.hidden  { opacity: 0; pointer-events: none; }
+
+    /* ── Offline Banner ─────────────────────────────────────── */
+    .offline-banner {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 9997;
+      background: rgba(129,140,248,0.20);
+      border-bottom: 1px solid rgba(129,140,248,0.40);
+      color: var(--text); font-size: 12px;
+      padding: 8px 48px 8px 16px;
+      display: flex; align-items: center; gap: 8px;
+    }
+    .offline-banner-close {
+      position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+      background: none; border: none; color: var(--text-2);
+      cursor: pointer; font-size: 18px; line-height: 1;
+    }
+
+    /* ── Mobile adjustments ─────────────────────────────────── */
+    @media (max-width: 600px) {
+      #user-name { display: none; }
+      .login-card { padding: 32px 24px; }
+    }
+
+    /* ── Print: hide login/loading overlays ─────────────────── */
+    @media print {
+      #auth-loading-screen, #login-screen { display: none !important; }
+    }
   </style>
 </head>
 <body>
+
+    <!-- ── Auth Loading Screen (shown while Firebase SDK loads) ── -->
+    <div id="auth-loading-screen">
+      <div class="auth-spinner"></div>
+    </div>
+
+    <!-- ── Login Screen ──────────────────────────────────────── -->
+    <div id="login-screen" style="display:none;">
+      <div class="login-card">
+        <div class="login-logo">
+          <svg width="48" height="48" viewBox="0 0 48 48" aria-hidden="true">
+            <rect width="48" height="48" rx="12" fill="rgba(129,140,248,0.15)"/>
+            <text x="24" y="31" text-anchor="middle"
+                  font-family="Inter,sans-serif" font-size="18" font-weight="700"
+                  fill="#818CF8">SC</text>
+          </svg>
+        </div>
+        <h1 class="login-title">スケジュール管理</h1>
+        <p class="login-sub">職場のGoogleアカウントでログインしてください</p>
+        <button class="login-btn" id="login-btn" type="button" onclick="login()">
+          <svg class="google-icon" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+            <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+            <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/>
+            <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+          </svg>
+          Googleでログイン
+        </button>
+        <p class="login-error" id="login-error" role="alert"></p>
+      </div>
+    </div>
+
+    <!-- ── App Screen (existing UI wrapped) ──────────────────── -->
+    <div id="app-screen" style="display:none;">
 
   <header class="header">
     <div class="header-left">
@@ -1096,6 +1267,20 @@
       <div class="stat-item s-done">
         <div class="stat-num" id="stat-done">0</div>
         <div class="stat-label">完了</div>
+      </div>
+    </div>
+    <span class="save-indicator hidden" id="save-indicator"></span>
+    <div class="user-menu" id="user-menu" style="display:none;">
+      <button class="user-btn" id="user-btn" type="button" onclick="toggleUserMenu()">
+        <img class="user-avatar" id="user-avatar" src="" alt=""
+             onerror="this.style.display='none';document.getElementById('user-avatar-fallback').style.display='flex';">
+        <span class="user-avatar-fallback" id="user-avatar-fallback"></span>
+        <span id="user-name"></span>
+        <span style="font-size:9px;margin-left:2px;">▾</span>
+      </button>
+      <div class="user-dropdown" id="user-dropdown" style="display:none;">
+        <div class="user-dropdown-name" id="user-email"></div>
+        <button type="button" onclick="logout()">ログアウト</button>
       </div>
     </div>
   </header>
@@ -1212,8 +1397,6 @@
   const CAT_LABEL = { visit:'訪問', meeting:'担当者会議', admin:'事務', monitoring:'モニタリング', training:'研修', dept:'社内行事' };
   const PRI_LABEL = { high:'高', mid:'中', low:'低' };
   const DAYS  = ['日','月','火','水','木','金','土'];
-  const STORAGE_KEY = 'care-schedule-v1';
-
   const RECURRING_EVENTS = [
     { key: 'yamanakajuku', label: 'やまなか塾V3', category: 'training', auto: true },
     { key: 'bushokai_shacho',   label: '部署会（社長）',    category: 'dept', auto: false },
@@ -1295,14 +1478,27 @@
     },
   };
 
-  // ── LocalStorage ──────────────────────────────────────
+  // ── Storage (Firestore) ───────────────────────────────
+  // NOTE: var (not let) so that window.currentUser from the IIFE refers
+  // to the same binding — top-level let does NOT create window.* properties
+  var currentUser = null;
+  var _saveTimer  = null;
+  var _appInitialized = false;
+
+  // No-op stubs — real implementations are set by the Firebase IIFE below.
+  // These prevent crashes if saveData() fires before the IIFE has loaded.
+  window.showSaveIndicator = function() {};
+  window.showOfflineBanner = function() {};
+  window.fbSignOutGlobal   = function() { return Promise.resolve(); };
+
   function todayStr() {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
   }
 
-  function saveData() {
-    const saved = {
+  function buildSavePayload() {
+    return {
+      lastWriteTime: Date.now(),
       saveDate:  todayStr(),
       morning:   data.today.filter(t => t.slot === 'morning'),
       afternoon: data.today.filter(t => t.slot === 'afternoon'),
@@ -1314,47 +1510,96 @@
       recurring: data.recurring || {},
       nextId,
     };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(saved));
   }
 
-  function loadData() {
-    const raw   = localStorage.getItem(STORAGE_KEY);
-    const today = todayStr();
-    if (!raw) { data = { today:[], ongoing:[], overdue:[], future:[], holidays:{}, recurring:{ yamanakajuku:{type:'nth-weekday',n:3,dow:5}, bushokai_shacho:{}, bushokai_dentatsu:{}, bushokai_kyotaku:{}, tomita:{}, keiei_1:{}, keiei_2:{}, keiei:{} } }; return; }
-    const saved = JSON.parse(raw);
-    nextId = saved.nextId || 300;
-    data.future = saved.future || [];
-    data.holidays = saved.holidays || {};
-    data.recurring = saved.recurring || {};
-    if (!data.recurring.yamanakajuku) data.recurring.yamanakajuku = { type: 'nth-weekday', n: 3, dow: 5 };
-    if (!data.recurring.bushokai_shacho)   data.recurring.bushokai_shacho   = {};
-    if (!data.recurring.bushokai_dentatsu) data.recurring.bushokai_dentatsu = {};
-    if (!data.recurring.bushokai_kyotaku)  data.recurring.bushokai_kyotaku  = {};
-    if (!data.recurring.tomita)   data.recurring.tomita   = {};
-    if (!data.recurring.keiei_1) {
-      data.recurring.keiei_1 = data.recurring.keiei || {};
-    }
-    if (!data.recurring.keiei_2) data.recurring.keiei_2 = {};
-    if (!data.recurring.keiei)   data.recurring.keiei   = {};
-    if (saved.saveDate === today) {
-      data.today   = [...(saved.morning||[]), ...(saved.afternoon||[]), ...(saved.anytime||[])];
-      data.ongoing = saved.ongoing || [];
-      data.overdue = saved.overdue || [];
-    } else {
-      // 日付が変わった：morning/afternoon/anytime のうち未完了タスクをすべて翌日に繰り越す
-      const prev = [
-        ...(saved.morning   || []),
-        ...(saved.afternoon || []),
-        ...(saved.anytime   || []),
-      ];
-      data.today = prev
-        .filter(t => t && t.done !== true)
-        .map(t => ({ ...t, done: false }));
-      data.ongoing = saved.ongoing || [];
-      data.overdue = saved.overdue || [];
-    }
-    promoteFuture();
+  function saveData() {
+    showSaveIndicator('pending');
+    clearTimeout(_saveTimer);
+    _saveTimer = setTimeout(() => _flushSave(), 300);
   }
+
+  async function _flushSave() {
+    if (!currentUser) return;
+    try {
+      await StorageAdapter.save(currentUser.uid, buildSavePayload());
+      showSaveIndicator('ok');
+    } catch (err) {
+      console.error('Firestore save failed:', err);
+      showSaveIndicator('error');
+    }
+  }
+
+  function defaultData() {
+      return {
+        today:[], ongoing:[], overdue:[], future:[], holidays:{},
+        recurring:{
+          yamanakajuku:{type:'nth-weekday',n:3,dow:5},
+          bushokai_shacho:{}, bushokai_dentatsu:{}, bushokai_kyotaku:{},
+          tomita:{}, keiei_1:{}, keiei_2:{}, keiei:{},
+        },
+      };
+    }
+
+    async function loadData() {
+      const today = todayStr();
+      let saved = null;
+      try {
+        saved = await StorageAdapter.load(currentUser.uid);
+      } catch (err) {
+        if (err.code === 'permission-denied') {
+          // This account is not on the allowlist — sign out and show clear message
+          await fbSignOutGlobal();
+          const errEl = document.getElementById('login-error');
+          if (errEl) errEl.textContent = 'このアカウントはアクセスできません。登録されたアカウントでログインしてください。';
+          return;
+        }
+        console.error('Firestore load failed:', err);
+        showOfflineBanner();
+        data = defaultData();
+        return;
+      }
+
+      if (!saved) {
+        data = defaultData();
+        await checkLocalStorageMigration();
+        return;
+      }
+
+      // Migrate legacy sequential nextId (< 1,000,000) to timestamp-based
+      nextId = (!saved.nextId || saved.nextId < 1_000_000) ? Date.now() : saved.nextId;
+
+      data.future   = saved.future   || [];
+      data.holidays = saved.holidays || {};
+      data.recurring = saved.recurring || {};
+      if (!data.recurring.yamanakajuku) data.recurring.yamanakajuku = { type: 'nth-weekday', n: 3, dow: 5 };
+      if (!data.recurring.bushokai_shacho)   data.recurring.bushokai_shacho   = {};
+      if (!data.recurring.bushokai_dentatsu) data.recurring.bushokai_dentatsu = {};
+      if (!data.recurring.bushokai_kyotaku)  data.recurring.bushokai_kyotaku  = {};
+      if (!data.recurring.tomita)   data.recurring.tomita   = {};
+      if (!data.recurring.keiei_1) {
+        data.recurring.keiei_1 = data.recurring.keiei || {};
+      }
+      if (!data.recurring.keiei_2) data.recurring.keiei_2 = {};
+      if (!data.recurring.keiei)   data.recurring.keiei   = {};
+
+      if (saved.saveDate === today) {
+        data.today   = [...(saved.morning||[]), ...(saved.afternoon||[]), ...(saved.anytime||[])];
+        data.ongoing = saved.ongoing || [];
+        data.overdue = saved.overdue || [];
+      } else {
+        const prev = [
+          ...(saved.morning   || []),
+          ...(saved.afternoon || []),
+          ...(saved.anytime   || []),
+        ];
+        data.today = prev
+          .filter(t => t && t.done !== true)
+          .map(t => ({ ...t, done: false }));
+        data.ongoing = saved.ongoing || [];
+        data.overdue = saved.overdue || [];
+      }
+      promoteFuture();
+    }
 
   // ── 定期予定 ──────────────────────────────────────────
   function nthWeekday(year, month, n, dow) {
@@ -2749,15 +2994,328 @@
   }
 
   // ── 初期化 ────────────────────────────────────────────
-  function init() {
+  async function init() {
     const now = new Date();
     document.getElementById('today-date').textContent =
       `${now.getFullYear()}年${now.getMonth()+1}月${now.getDate()}日（${DAYS[now.getDay()]}）`;
-    loadData();
+    await loadData();
     renderAll();
   }
 
-  init();
+  // init() is called from onAuthStateChanged inside the Firebase IIFE (second <script> below).
+  // The bare init() call has been removed to prevent a crash before the IIFE loads.
+
+    // ── localStorage → Firestore migration ───────────────────
+    async function checkLocalStorageMigration() {
+      try {
+        if (localStorage.getItem('care-schedule-v1-migrated') === '1') return;
+        const raw = localStorage.getItem('care-schedule-v1');
+        if (!raw) return;
+        JSON.parse(raw); // validate JSON — throws if corrupt
+      } catch {
+        return;
+      }
+
+      const card = document.createElement('div');
+      card.style.cssText = [
+        'position:fixed;bottom:max(24px,env(safe-area-inset-bottom,0px) + 16px);',
+        'left:50%;transform:translateX(-50%);',
+        'background:var(--surface);border:1.5px solid var(--accent);',
+        'border-radius:12px;padding:20px;z-index:8000;',
+        'box-shadow:0 4px 20px rgba(0,0,0,0.4);',
+        'width:min(360px,calc(100vw - 32px));',
+      ].join('');
+      card.innerHTML = `
+        <p style="font-size:13px;color:var(--text);margin-bottom:4px;font-weight:600;">データの移行</p>
+        <p style="font-size:12px;color:var(--text-2);margin-bottom:16px;line-height:1.5;">
+          このデバイスに保存されているデータをクラウドに移行しますか？<br>
+          ※移行後もローカルデータは保持されます
+        </p>
+        <div style="display:flex;gap:8px;justify-content:flex-end;">
+          <button id="_mig_skip" type="button"
+            style="padding:7px 14px;border-radius:6px;border:1px solid var(--border);
+                   background:none;color:var(--text-2);cursor:pointer;font-size:12px;">
+            今はしない
+          </button>
+          <button id="_mig_ok" type="button"
+            style="padding:7px 14px;border-radius:6px;border:none;
+                   background:var(--accent);color:#fff;cursor:pointer;
+                   font-size:12px;font-weight:600;">
+            クラウドに移行する
+          </button>
+        </div>
+        <p id="_mig_status" style="font-size:11px;color:var(--text-2);margin-top:10px;min-height:14px;"></p>
+      `;
+      document.body.appendChild(card);
+
+      document.getElementById('_mig_skip').onclick = () => card.remove();
+
+      document.getElementById('_mig_ok').onclick = async () => {
+        const okBtn    = document.getElementById('_mig_ok');
+        const skipBtn  = document.getElementById('_mig_skip');
+        const status   = document.getElementById('_mig_status');
+        okBtn.disabled = true; skipBtn.disabled = true;
+        status.textContent = '移行中…';
+        try {
+          const raw = localStorage.getItem('care-schedule-v1');
+          const localData = JSON.parse(raw);
+          // Migrate nextId to timestamp-based if old sequential
+          if (!localData.nextId || localData.nextId < 1_000_000) {
+            localData.nextId = Date.now();
+          }
+          localData.lastWriteTime = Date.now();
+          // Save to Firestore FIRST — only remove localStorage after success
+          await StorageAdapter.save(currentUser.uid, localData);
+          localStorage.setItem('care-schedule-v1-migrated', '1');
+          status.textContent = '移行が完了しました';
+          setTimeout(async () => {
+            card.remove();
+            await init();
+            renderAll();
+          }, 1200);
+        } catch (err) {
+          status.textContent = '移行に失敗しました。再度お試しください。';
+          status.style.color = 'var(--pri-high)';
+          okBtn.disabled = false; skipBtn.disabled = false;
+        }
+      };
+    }
   </script>
+    </div><!-- /#app-screen -->
+
+<!-- ── Firebase SDK + Auth + Firestore ────────────────────── -->
+<script>
+// Catch failed dynamic imports (network error / CDN blocked)
+window.addEventListener('unhandledrejection', function(event) {
+  var msg = (event.reason && event.reason.message) ? event.reason.message : String(event.reason);
+  if (msg.indexOf('gstatic.com') !== -1 || msg.indexOf('Failed to fetch') !== -1) {
+    var spinner = document.getElementById('auth-loading-screen');
+    if (spinner) spinner.innerHTML =
+      '<div style="color:var(--text-2);text-align:center;padding:20px;font-size:13px;">' +
+      'ネットワークに接続できません。<br>接続を確認して再読み込みしてください。<br><br>' +
+      '<button onclick="location.reload()" style="padding:8px 16px;border-radius:8px;' +
+      'background:var(--accent);border:none;color:#fff;cursor:pointer;">再読み込み</button></div>';
+    event.preventDefault();
+  }
+});
+
+(async function firebaseInit() {
+  var V    = '10.12.2';
+  var BASE = 'https://www.gstatic.com/firebasejs/' + V;
+
+  var appMod   = await import(BASE + '/firebase-app.js');
+  var authMod  = await import(BASE + '/firebase-auth.js');
+  var storeMod = await import(BASE + '/firebase-firestore.js');
+
+  var initializeApp           = appMod.initializeApp;
+  var getAuth                 = authMod.getAuth;
+  var setPersistence          = authMod.setPersistence;
+  var browserLocalPersistence = authMod.browserLocalPersistence;
+  var signInWithPopup         = authMod.signInWithPopup;
+  var signInWithRedirect      = authMod.signInWithRedirect;
+  var getRedirectResult        = authMod.getRedirectResult;
+  var GoogleAuthProvider      = authMod.GoogleAuthProvider;
+  var onAuthStateChanged      = authMod.onAuthStateChanged;
+  var signOut                 = authMod.signOut;
+  var initializeFirestore     = storeMod.initializeFirestore;
+  var persistentLocalCache    = storeMod.persistentLocalCache;
+  var persistentMultipleTabManager = storeMod.persistentMultipleTabManager;
+  var doc                     = storeMod.doc;
+  var getDoc                  = storeMod.getDoc;
+  var setDoc                  = storeMod.setDoc;
+
+  // ── Firebase config (replace with real values from Firebase Console) ──
+  var firebaseConfig = {
+    apiKey:            "AIzaSyB7sjQr26Ao7NS0faMq1Zf0yf9Dr6O0LRE",
+    authDomain:        "care-schedule-4b812.firebaseapp.com",
+    projectId:         "care-schedule-4b812",
+    storageBucket:     "care-schedule-4b812.firebasestorage.app",
+    messagingSenderId: "500559756764",
+    appId:             "1:500559756764:web:735d683728baf95496e319"
+  };
+
+  var app  = initializeApp(firebaseConfig);
+  var auth = getAuth(app);
+  var db   = initializeFirestore(app, {
+    localCache: persistentLocalCache({
+      tabManager: persistentMultipleTabManager()
+    })
+  });
+  var googleProvider = new GoogleAuthProvider();
+
+  // Persist login across browser sessions (survive tab close / restart)
+  await setPersistence(auth, browserLocalPersistence);
+
+  // ── Storage Adapter ──────────────────────────────────────
+  window.StorageAdapter = {
+    save: async function(uid, payload) {
+      await setDoc(doc(db, 'users', uid, 'schedule', 'data'), payload);
+    },
+    load: async function(uid) {
+      var snap = await getDoc(doc(db, 'users', uid, 'schedule', 'data'));
+      return snap.exists() ? snap.data() : null;
+    }
+  };
+
+  // ── Expose sign-out for loadData() error handling ────────
+  window.fbSignOutGlobal = async function() { await signOut(auth); };
+
+  // ── UI helpers ────────────────────────────────────────────
+  function getAuthErrorMessage(err) {
+    var map = {
+      'auth/network-request-failed':
+        'ネットワークに接続できませんでした。Wi-Fiまたはモバイルデータをご確認ください。',
+      'auth/popup-blocked':
+        'ポップアップがブロックされました。ブラウザの設定でポップアップを許可してください。',
+      'auth/popup-closed-by-user':
+        'ログインがキャンセルされました。もう一度お試しください。',
+      'auth/cancelled-popup-request':
+        'ログインがキャンセルされました。もう一度お試しください。',
+      'auth/unauthorized-domain':
+        'このURLからのログインは許可されていません。管理者にお問い合わせください。',
+      'auth/user-disabled':
+        'このアカウントは無効になっています。管理者にお問い合わせください。',
+    };
+    return map[err.code] || 'ログインに失敗しました。しばらく待ってからもう一度お試しください。';
+  }
+
+  window.showSaveIndicator = function(state) {
+    var el = document.getElementById('save-indicator');
+    if (!el) return;
+    el.className = 'save-indicator ' + state;
+    if (state === 'pending') { el.textContent = '保存中…'; }
+    if (state === 'ok')      { el.textContent = '保存済み'; setTimeout(function(){ el.classList.add('hidden'); }, 2000); }
+    if (state === 'error')   { el.textContent = '保存失敗'; }
+  };
+
+  window.showOfflineBanner = function() {
+    if (document.getElementById('offline-banner')) return;
+    var banner = document.createElement('div');
+    banner.id = 'offline-banner';
+    banner.className = 'offline-banner';
+    banner.innerHTML =
+      'オフライン中 — 接続が回復すると自動的に更新されます' +
+      '<button class="offline-banner-close" type="button" ' +
+      'onclick="document.getElementById(\'offline-banner\').remove()" ' +
+      'aria-label="閉じる">×</button>';
+    document.body.appendChild(banner);
+    window.addEventListener('online', function() {
+      var b = document.getElementById('offline-banner');
+      if (b) b.remove();
+    }, { once: true });
+  };
+
+  window.showLoginScreen = function() {
+    document.getElementById('auth-loading-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display        = 'flex';
+    document.getElementById('app-screen').style.display          = 'none';
+    document.getElementById('user-menu').style.display           = 'none';
+  };
+
+  window.showAppScreen = function(user) {
+    document.getElementById('auth-loading-screen').style.display = 'none';
+    document.getElementById('login-screen').style.display        = 'none';
+    document.getElementById('app-screen').style.display          = '';
+    var menu = document.getElementById('user-menu');
+    menu.style.display = '';
+    var avatar    = document.getElementById('user-avatar');
+    var fallback  = document.getElementById('user-avatar-fallback');
+    var nameEl    = document.getElementById('user-name');
+    var emailEl   = document.getElementById('user-email');
+    if (user.photoURL) {
+      avatar.src = user.photoURL;
+    } else {
+      avatar.style.display = 'none';
+      fallback.style.display = 'flex';
+      fallback.textContent = (user.displayName || user.email || 'U').charAt(0).toUpperCase();
+    }
+    nameEl.textContent  = user.displayName ? user.displayName.split(' ')[0] : '';
+    emailEl.textContent = user.email || '';
+  };
+
+  window.toggleUserMenu = function() {
+    var dd = document.getElementById('user-dropdown');
+    dd.style.display = dd.style.display === 'none' ? '' : 'none';
+  };
+
+  document.addEventListener('click', function(e) {
+    var menu = document.getElementById('user-menu');
+    var dd   = document.getElementById('user-dropdown');
+    if (dd && menu && !menu.contains(e.target)) dd.style.display = 'none';
+  });
+
+  // ── Login ────────────────────────────────────────────────
+  window.login = async function() {
+    var btn    = document.getElementById('login-btn');
+    var errEl  = document.getElementById('login-error');
+    btn.disabled = true;
+    errEl.textContent = '';
+    try {
+      await signInWithPopup(auth, googleProvider);
+    } catch (e) {
+      if (['auth/popup-blocked','auth/popup-closed-by-user',
+           'auth/cancelled-popup-request'].includes(e.code)) {
+        try {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        } catch (e2) {
+          errEl.textContent = getAuthErrorMessage(e2);
+        }
+      } else if (e.code !== 'auth/popup-closed-by-user') {
+        errEl.textContent = getAuthErrorMessage(e);
+      }
+      btn.disabled = false;
+    }
+  };
+
+  // ── Logout ───────────────────────────────────────────────
+  window.logout = async function() {
+    if (!confirm('ログアウトしますか？\n保存されていない変更は失われます。')) return;
+    if (_saveTimer) { clearTimeout(_saveTimer); await _flushSave(); }
+    await signOut(auth);
+    try { localStorage.removeItem('care-schedule-v1'); } catch(_) {}
+  };
+
+  // ── Flush on tab/window close ────────────────────────────
+  window.addEventListener('beforeunload', function() {
+    if (_saveTimer) { clearTimeout(_saveTimer); _flushSave(); }
+  });
+
+  // ── Capture redirect sign-in result (for iOS Safari) ─────
+  await getRedirectResult(auth).catch(function(err) {
+    if (err.code && err.code !== 'auth/popup-closed-by-user') {
+      console.error('getRedirectResult:', err.code);
+    }
+  });
+
+  // ── Auth state driver ─────────────────────────────────────
+  onAuthStateChanged(auth, async function(user) {
+    if (user) {
+      currentUser = user;
+      showAppScreen(user);
+      if (!_appInitialized) {
+        _appInitialized = true;
+        await init();
+      }
+    } else {
+      _appInitialized = false;
+      if (_saveTimer) { clearTimeout(_saveTimer); _saveTimer = null; }
+      currentUser = null;
+      showLoginScreen();
+      data = defaultData();
+    }
+  });
+
+})().catch(function(err) {
+  console.error('Firebase initialization failed:', err);
+  var el = document.getElementById('auth-loading-screen');
+  if (el) el.innerHTML =
+    '<div style="color:var(--text-2);text-align:center;padding:20px;font-size:13px;">' +
+    '初期化に失敗しました。<br>ページを再読み込みしてください。<br><br>' +
+    '<button onclick="location.reload()" style="padding:8px 16px;border-radius:8px;' +
+    'background:var(--accent);border:none;color:#fff;cursor:pointer;">再読み込み</button></div>';
+});
+</script>
+
 </body>
 </html>
